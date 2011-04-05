@@ -1,0 +1,17 @@
+$LOAD_PATH << File.join(File.dirname(__FILE__), '..', 'lib')
+
+require 'java/command_line'
+require 'java/task'
+build_task = nil
+namespace :build do
+ build_task = Java::BuildTask.new('java')
+end
+
+namespace :run do
+
+  desc 'Execute the HelloWorld example class'
+  task :hello_world => 'build:compile' do
+    Java::CommandLine::java(
+      build_task.classpath, 'build.task.example.HelloWorld')
+  end
+end
