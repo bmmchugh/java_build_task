@@ -113,7 +113,7 @@ module Java
 
       task name do |t|
         unless includes.empty?
-          Java.jar(target_name, source_path, Java.join(' ', includes))
+          Java::CommandLine::jar(target_name, source_path, Java::CommandLine::join(' ', includes))
         end
       end
     end
@@ -243,7 +243,7 @@ module Java
       desc("Create javadoc documentation")
       task :docs => @doc_target do
         cd @root unless @root.nil?
-        Java.javadoc(
+        Java::CommandLine::javadoc(
           @classpath, @source, @doc_target, @doc_packages, @doc_options)
       end
 
@@ -331,7 +331,7 @@ module Java
             end.compact.uniq
         end
 
-        Java.serialver(@classpath, class_names.flatten)
+        Java::CommandLine::serialver(@classpath, class_names.flatten)
       end
 
       desc("Check the style of the source")
@@ -365,7 +365,7 @@ module Java
         if test_files.empty?
           puts "No files to audit"
         else
-          test_files_string = Java.join(' ', test_files);
+          test_files_string = Java::CommandLine::join(' ', test_files);
           test_files_arg = if test_files_string.length > 5000
                              test_files_input_file = File.join(
                                @build_path,
@@ -377,7 +377,7 @@ module Java
                            else
                              test_files_string
                            end
-          Java.java(
+          Java::CommandLine::java(
                @test_classpath,
                'com.freerangedata.checkstyle.CheckstyleRunner',
                @checkstyle_xml,
@@ -386,13 +386,17 @@ module Java
         end
       end
 
-      desc("Run autotest")
-      task :autotest => @build_path do |t|
-        task_name_parts = t.name.split(':')
-        task_name_parts[-1] = 'test'
-        cd @root unless @root.nil?
-        require 'autotest/java'
-        Autotest::Java.new("#{task_name_parts.join(':')}", @build_path).run
+      begin
+        require 'autotest'
+        desc("Run autotest")
+        task :autotest => @build_path do |t|
+          task_name_parts = t.name.split(':')
+          task_name_parts[-1] = 'test'
+          cd @root unless @root.nil?
+          require 'java/autotest'
+          Autotest::Java.new("#{task_name_parts.join(':')}", @build_path).run
+        end
+      rescue LoadError
       end
 
       desc("Runs unit tests")
@@ -434,7 +438,7 @@ module Java
                          tests.split.join(',').split(',').compact
                        end
 
-          Java.test(@test_classpath,
+          Java::CommandLine::test(@test_classpath,
                test_files.collect { |d|
                  if File.exist?(d)
                    d = File.expand_path(d)
