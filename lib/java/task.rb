@@ -334,56 +334,60 @@ module Java
         Java::CommandLine::serialver(@classpath, class_names.flatten)
       end
 
-      desc("Check the style of the source")
-      task :checkstyle => @build_path do
-        cd @root unless @root.nil?
-        source_files = []
-        @source.each do |s|
-          source_files << File.join(s, '**', '*.java')
-        end
-          @test_source.each do |s|
-          source_files << File.join(s, '**', '*.java')
-        end
-        test_files = if ENV['TESTS'].nil?
-                       FileList.new(source_files)
-                     else
-                       tests = ENV['TESTS']
-                       if tests.start_with?('@')
-                         tests = File.read(tests[1..-1])
-                       end
-                       tests.split.join(',').split(',').compact
-                     end
-
-        test_files = test_files.collect do |d|
-          if File.exist?(d)
-            if d =~ /.*\.java$/
-              File.expand_path(d)
-            end
+      if File.exists?(@checkstyle_xml)
+        desc("Check the style of the source")
+        task :checkstyle => @build_path do
+          cd @root unless @root.nil?
+          source_files = []
+          @source.each do |s|
+            source_files << File.join(s, '**', '*.java')
           end
-        end.compact.uniq
+            @test_source.each do |s|
+            source_files << File.join(s, '**', '*.java')
+          end
+          test_files = if ENV['TESTS'].nil?
+                         FileList.new(source_files)
+                       else
+                         tests = ENV['TESTS']
+                         if tests.start_with?('@')
+                           tests = File.read(tests[1..-1])
+                         end
+                         tests.split.join(',').split(',').compact
+                       end
 
-        if test_files.empty?
-          puts "No files to audit"
-        else
-          test_files_string = Java::CommandLine::join(' ', test_files);
-          test_files_arg = if test_files_string.length > 5000
-                             test_files_input_file = File.join(
-                               @build_path,
-                               '.checkstylesources')
-                             File.open(test_files_input_file, 'w') do |f|
-                               f.write(test_files_string)
+          test_files = test_files.collect do |d|
+            if File.exist?(d)
+              if d =~ /.*\.java$/
+                File.expand_path(d)
+              end
+            end
+          end.compact.uniq
+
+          if test_files.empty?
+            puts "No files to audit"
+          else
+            test_files_string = Java::CommandLine::join(' ', test_files);
+            test_files_arg = if test_files_string.length > 5000
+                               test_files_input_file = File.join(
+                                 @build_path,
+                                 '.checkstylesources')
+                               File.open(test_files_input_file, 'w') do |f|
+                                 f.write(test_files_string)
+                               end
+                               "@#{test_files_input_file}"
+                             else
+                               test_files_string
                              end
-                             "@#{test_files_input_file}"
-                           else
-                             test_files_string
-                           end
-          Java::CommandLine::java(
-               @test_classpath,
-               'com.freerangedata.checkstyle.CheckstyleRunner',
-               @checkstyle_xml,
-               test_files_arg,
-               @system_properties.merge('basedir' => @checkstyle_basedir))
+            Java::CommandLine::java(
+                 @test_classpath,
+                 'com.freerangedata.checkstyle.CheckstyleRunner',
+                 @checkstyle_xml,
+                 test_files_arg,
+                 @system_properties.merge('basedir' => @checkstyle_basedir))
+          end
         end
+      else
+        task :checkstyle # noop
       end
 
       begin
