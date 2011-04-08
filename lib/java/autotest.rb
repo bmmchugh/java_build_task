@@ -1,3 +1,4 @@
+require 'rubygems'
 require 'autotest'
 
 Autotest.add_hook :initialize do |at|
