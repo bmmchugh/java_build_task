@@ -217,35 +217,44 @@ module Java
         rm_r @build_path if File.exists?(@build_path)
       end
 
-      desc("Copies resource files to the target")
-      task :resources => @target
-      define_resources_task(@source, @target, :resources)
+      namespace :source do
 
-      @config_paths.each do |config_path|
-        define_resources_task(
-          config_path, @target, :resources,
-          [/.*\.properties$/,
-           /.*\.yml$/,
-           /.*\.template$/])
+        task :resources => @target
+        define_resources_task(@source, @target, :resources)
+
+        @config_paths.each do |config_path|
+          define_resources_task(
+            config_path, @target, :resources,
+            [/.*\.properties$/,
+              /.*\.yml$/,
+              /.*\.template$/])
+        end
+
+        task :compile => :resources
+        define_compile_task(
+          @classpath,
+          @source,
+          @target,
+          :compile,
+          @build_path,
+          @compiler_options,
+          @compiler_system_properties)
+
+        task :docs => @doc_target do
+          cd @root unless @root.nil?
+          Java::CommandLine::javadoc(
+            @classpath, @source, @doc_target, @doc_packages, @doc_options)
+        end
       end
+
+      desc("Copies resource files to the target")
+      task :resources => 'source:resources'
 
       desc("Compiles Java class files to the target")
-      compile_task = task :compile => :resources
-      define_compile_task(
-        @classpath,
-        @source,
-        @target,
-        :compile,
-        @build_path,
-        @compiler_options,
-        @compiler_system_properties)
+      task :compile => 'source:compile'
 
       desc("Create javadoc documentation")
-      task :docs => @doc_target do
-        cd @root unless @root.nil?
-        Java::CommandLine::javadoc(
-          @classpath, @source, @doc_target, @doc_packages, @doc_options)
-      end
+      task :docs => 'source:docs'
 
       task :dist_lib do
         if @web_app_path.nil?
@@ -415,7 +424,7 @@ module Java
         define_resources_task(@test_source, @test_target, :resources)
 
         desc("Compiles test Java class files to the test target")
-        task :compile => [compile_task, :resources]
+        task :compile => ['source:compile', :resources]
         define_compile_task(
           @test_classpath,
           @test_source,
