@@ -323,6 +323,7 @@ module Java
 
         class_names = []
         @source.each do |s|
+          s = File.expand_path(s)
           class_names <<
             FileList[File.join(s, '**', '*.java')].collect do |source_file|
               if File.exist?(source_file)
@@ -455,7 +456,9 @@ module Java
                test_files.collect { |d|
                  if File.exist?(d)
                    d = File.expand_path(d)
-                   ts_regex = "(#{@test_source.to_a.join('|')})"
+                   ts_regex = "(#{@test_source.to_a.collect { |ts|
+                     File.expand_path(ts)
+                   }.join('|')})"
                    if d =~ /^#{ts_regex}/
                      d.gsub!(/#{ts_regex}\/|\.java/, '')
                      d.gsub!(/(\/|\\)/, '.')
