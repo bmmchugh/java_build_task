@@ -16,7 +16,7 @@ module Java
       temp_file_path = target_path if temp_file_path.nil?
       directory target_path
       task name => target_path do |t|
-        source_paths = source_path.to_a
+        source_paths = [source_path].flatten
         sources = []
         source_paths.each do |path|
           FileList["#{path}/**/*.java"].each do |source|
@@ -190,7 +190,7 @@ module Java
       self.dist_path = File.join(@build_path, 'dist')
       @lib_path = File.join(path, 'lib')
       @test_lib_path = File.join(path, 'test', 'lib')
-      @checkstyle_xml = File.join(path, '..', 'checkstyle.xml')
+      @checkstyle_xml = File.join(path, 'checkstyle.xml')
       @checkstyle_basedir = path
     end
 
@@ -345,8 +345,24 @@ module Java
       end
 
       if File.exists?(@checkstyle_xml)
+        runner_base = File.join(File.dirname(__FILE__),
+                                '..',
+                                '..',
+                                'ext',
+                                'java')
+        runner_source = File.join(runner_base, 'src')
+        runner_build = File.join(runner_base, 'build')
+        directory runner_build
+        task :clean do
+          rm_r runner_build if File.exists?(runner_build)
+        end
+        task :build_checkstyle_runner => runner_build
+        define_compile_task([ @test_classpath, runner_build ],
+                            runner_source,
+                            runner_build,
+                            :build_checkstyle_runner)
         desc("Check the style of the source")
-        task :checkstyle => @build_path do
+        task :checkstyle => [ @build_path, :build_checkstyle_runner ] do
           cd @root unless @root.nil?
           source_files = []
           @source.each do |s|
@@ -389,7 +405,7 @@ module Java
                                test_files_string
                              end
             Java::CommandLine::java(
-                 @test_classpath,
+                 [ @test_classpath, runner_build ],
                  'com.freerangedata.checkstyle.CheckstyleRunner',
                  @checkstyle_xml,
                  test_files_arg,
