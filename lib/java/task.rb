@@ -495,10 +495,26 @@ module Java
     end
 
     def distribution_number
-      if @dist_version.nil?
-        return ''
+      version = @dist_version
+
+      if version.nil?
+        if defined?(VERSION)
+          version = VERSION
+        end
       end
-      "-#{@dist_version.to_f}"
+
+      if version.nil?
+        version_file = File.join(@root, 'VERSION.txt')
+        if File.exist?(version_file)
+          version = File.read(version_file).strip
+        end
+      end
+
+      if version.nil?
+        ''
+      else
+        "-#{version}"
+      end
     end
   end
 end
