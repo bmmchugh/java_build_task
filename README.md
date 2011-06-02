@@ -2,7 +2,9 @@
 
 ## DESCRIPTION
 
-Java build tool for [rake](http://rake.rubyforge.org "Rake").
+Java build tool for [rake](http://rake.rubyforge.org "Rake"),
+designed to provide more flexibility than is offered with
+[ant](http://ant.apache.org "Ant").
 
 ## EXAMPLE
 
@@ -41,13 +43,6 @@ Produces the following Rake tasks:
   * JUnit (used with 4.7)
   * Checkstyle (optional used with 5.0)  Checkstyle will also require the
     checkstyle runner found in ext/java/src/com/freerangedata/checkstyle
-
-## TODO
-
-This project was extracted from a large Java project where more flexibility was
-needed than is offered with [ant](http://ant.apache.org "Ant").  Some of the
-tasks were created specifically to fill the needs of the project and can be
-made to suit a more general purpose.
 
 ## LICENSE
 
