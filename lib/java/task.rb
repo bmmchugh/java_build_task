@@ -27,7 +27,7 @@ module Java
             end
           end
           unless sources.empty?
-            sources_string = Java::CommandLine::join(' ', sources)
+            sources_string = ::CommandLine.join(' ', sources)
             sources_arg = if sources_string.length > 5000
                             sources_input_file = File.join(
                               temp_file_path,
@@ -46,6 +46,51 @@ module Java
               sources_arg,
               compiler_options,
               compiler_system_properties)
+          end
+        end
+      end
+    end
+
+    def define_groovy_compile_task(
+      classpath,
+      source_path,
+      target_path,
+      name = :groovyc,
+      temp_file_path = nil,
+      java_options = {})
+
+      temp_file_path = target_path if temp_file_path.nil?
+      directory target_path
+      task name => target_path do |t|
+        source_paths = [source_path].flatten
+        sources = []
+        source_paths.each do |path|
+          FileList["#{path}/**/*.groovy"].each do |source|
+            target = source.sub(path, target_path)
+            target.sub!('.groovy', '.class')
+            unless File.exists?(target) && File.mtime(target) > File.mtime(source)
+              sources << source
+            end
+          end
+          unless sources.empty?
+            sources_string = ::CommandLine.join(' ', sources)
+            sources_arg = if sources_string.length > 5000
+                            sources_input_file = File.join(
+                              temp_file_path,
+                              '.sources')
+                            File.open(sources_input_file, 'w') do |f|
+                              f.write(sources_string)
+                            end
+                            "@#{sources_input_file}"
+                          else
+                            sources_string
+                          end
+            Java::CommandLine::groovyc(
+              classpath,
+              target_path,
+              source_paths,
+              sources_arg,
+              java_options)
           end
         end
       end
@@ -113,7 +158,7 @@ module Java
 
       task name do |t|
         unless includes.empty?
-          Java::CommandLine::jar(target_name, source_path, Java::CommandLine::join(' ', includes))
+          Java::CommandLine::jar(target_name, source_path, ::CommandLine::join(' ', includes))
         end
       end
     end
@@ -125,6 +170,7 @@ module Java
     attr_accessor :name
     attr_accessor :source
     attr_accessor :test_source
+    attr_accessor :test_groovy_source
     attr_accessor :build_path
     attr_accessor :target
     attr_accessor :test_target
@@ -175,6 +221,10 @@ module Java
                          @test_target,
                          File.join(@test_lib_path, '**', '*.jar')] +
                          @test_classpath
+      if @test_groovy_source.any? { |gs| File.exist?(gs) } &&
+        ENV['GROOVY_HOME']
+        @test_classpath << File.join(ENV['GROOVY_HOME'], 'lib', '**', '*.jar')
+      end
       define
     end
 
@@ -182,6 +232,7 @@ module Java
       @root = path
       @source = [File.join(path, 'src')]
       @test_source = [File.join(path, 'test', 'src')]
+      @test_groovy_source = [File.join(path, 'test', 'groovy')]
       @build_path = File.join(path, 'build')
       @target = File.join(@build_path, 'classes')
       @test_target = File.join(@build_path, 'test')
@@ -392,7 +443,7 @@ module Java
           if test_files.empty?
             puts "No files to audit"
           else
-            test_files_string = Java::CommandLine::join(' ', test_files);
+            test_files_string = ::CommandLine::join(' ', test_files);
             test_files_arg = if test_files_string.length > 5000
                                test_files_input_file = File.join(
                                  @build_path,
@@ -451,42 +502,56 @@ module Java
           @compiler_options,
           @compiler_system_properties)
 
-        desc("Runs unit tests")
-        task :run => [:compile] do
-          cd @root unless @root.nil?
-          test_files = if ENV['TESTS'].nil?
-                         FileList.new do |fl|
-                           @test_source.to_a.each do |ts|
-                             fl.include(File.join(ts, '**', '*Test.java'))
-                           end
-                         end
-                       else
-                         tests = ENV['TESTS']
-                         if tests.start_with?('@')
-                           tests = File.read(tests[1..-1])
-                         end
-                         tests.split.join(',').split(',').compact
-                       end
+          if @test_groovy_source.any? { |s| File.exist?(s) }
+            desc("Compiles test Groovy scripts to the test target")
+            task :groovyc => [:compile]
+            define_groovy_compile_task(
+              @test_classpath,
+              @test_groovy_source,
+              @test_target,
+              :groovyc,
+              @build_path)
+          else
+            task :groovyc #noop
+          end
 
-          Java::CommandLine::test(@test_classpath,
-               test_files.collect { |d|
-                 if File.exist?(d)
-                   d = File.expand_path(d)
-                   ts_regex = "(#{@test_source.to_a.collect { |ts|
-                     File.expand_path(ts)
-                   }.join('|')})"
-                   if d =~ /^#{ts_regex}/
-                     d.gsub!(/#{ts_regex}\/|\.java/, '')
-                     d.gsub!(/(\/|\\)/, '.')
-                     d
-                   else
-                     nil
-                   end
-                 else
-                   d
-                 end }.compact.uniq,
-               @system_properties)
-        end
+          desc("Runs unit tests")
+          task :run => [:compile, :groovyc] do
+            cd @root unless @root.nil?
+            test_files = if ENV['TESTS'].nil?
+                           FileList.new do |fl|
+                             fl.include(
+                               File.join(@test_target, '**', '*Test.class'))
+                           end
+                         else
+                           tests = ENV['TESTS']
+                           if tests.start_with?('@')
+                             tests = File.read(tests[1..-1])
+                           end
+                           tests.split.join(',').split(',').compact
+                         end
+
+            Java::CommandLine::test(@test_classpath,
+                                    test_files.collect { |d|
+              if File.exist?(d)
+                d = File.expand_path(d)
+                ts_regex = "(#{[@test_source,
+                                @test_groovy_source,
+                                  @test_target].flatten.collect { |ts|
+                                  File.expand_path(ts)
+                                }.join('|')})"
+                                if d =~ /^#{ts_regex}/
+                                  d.gsub!(/#{ts_regex}\/|\.java|\.groovy|\.class/, '')
+                                  d.gsub!(/(\/|\\)/, '.')
+                                  d
+                                else
+                                  nil
+                                end
+              else
+                d
+              end }.compact.uniq,
+                @system_properties)
+          end
       end
     end
 
