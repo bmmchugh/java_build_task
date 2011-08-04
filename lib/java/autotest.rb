@@ -4,6 +4,11 @@ require 'autotest'
 Autotest.add_hook :initialize do |at|
   at.clear_mappings
   %w{.svn/
+     .git/
+     .gitignore
+     .autotest
+     Gemfile
+     Gemfile.lock
      bin/
      build/
      config/
@@ -17,11 +22,17 @@ Autotest.add_hook :initialize do |at|
   at.add_mapping(%r%^test/src/(.*Test)\.java$%) do |filename, m|
     filename
   end
+  at.add_mapping(%r%^test/groovy/(.*Test)\.groovy$%) do |filename, m|
+    filename
+  end
   at.add_mapping(%r%^src/(.*)\.java%) do |filename, m|
-    [filename] + at.files_matching(%r%test/src/#{m[1]}.*Test.java$%)
+    [filename] +
+      at.files_matching(%r%test/src/#{m[1]}.*Test\.java$%) +
+      at.files_matching(%r%test/groovy/#{m[1]}.*Test\.groovy$%)
   end
   at.add_mapping(%r%^generated/(.*)\.java$%) do
-    at.files_matching %r%^test/src/.*Test\.java$%
+    at.files_matching(%r%^test/src/.*Test\.java$%) +
+      at.files_matching(%r%^test/groovy/.*Test\.groovy$%)
   end
 end
 
