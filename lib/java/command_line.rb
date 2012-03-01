@@ -46,7 +46,7 @@ module Java
         value
       end.join(' ')
 
-      ::CommandLine.run "#{java_command('javac')} #{system_properties} #{compiler_options} -source 5 -target 5 -sourcepath #{::CommandLine.path(sourcepath)} -classpath #{::CommandLine.path(classpath)} -d #{target} #{sourcefiles}", true
+      ::CommandLine.run "#{java_command('javac')} #{system_properties} #{compiler_options} -sourcepath #{::CommandLine.path(sourcepath)} -classpath #{::CommandLine.path(classpath)} -d #{target} #{sourcefiles}", true
     end
 
     def self.test(classpath, test_files, system_properties = {})
