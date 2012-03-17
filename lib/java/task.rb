@@ -27,7 +27,7 @@ module Java
             end
           end
           unless sources.empty?
-            sources_string = ::CommandLine.join(' ', sources)
+            sources_string = CommandLine::join(' ', sources)
             sources_arg = if sources_string.length > 5000
                             sources_input_file = File.join(
                               temp_file_path,
@@ -39,7 +39,7 @@ module Java
                           else
                             sources_string
                           end
-            Java::CommandLine::javac(
+            CommandLine::javac(
               classpath,
               target_path,
               source_paths,
@@ -73,7 +73,7 @@ module Java
             end
           end
           unless sources.empty?
-            sources_string = ::CommandLine.join(' ', sources)
+            sources_string = CommandLine::join(' ', sources)
             sources_arg = if sources_string.length > 5000
                             sources_input_file = File.join(
                               temp_file_path,
@@ -85,7 +85,7 @@ module Java
                           else
                             sources_string
                           end
-            Java::CommandLine::groovyc(
+            CommandLine::groovyc(
               classpath,
               target_path,
               source_paths,
@@ -158,7 +158,7 @@ module Java
 
       task name do |t|
         unless includes.empty?
-          Java::CommandLine::jar(target_name, source_path, ::CommandLine::join(' ', includes))
+          CommandLine::jar(target_name, source_path, CommandLine::join(' ', includes))
         end
       end
     end
@@ -293,7 +293,7 @@ module Java
 
         task :docs => @doc_target do
           cd @root unless @root.nil?
-          Java::CommandLine::javadoc(
+          CommandLine::javadoc(
             @classpath, @source, @doc_target, @doc_packages, @doc_options)
         end
       end
@@ -392,7 +392,7 @@ module Java
             end.compact.uniq
         end
 
-        Java::CommandLine::serialver(@classpath, class_names.flatten)
+        CommandLine::serialver(@classpath, class_names.flatten)
       end
 
       if File.exists?(@checkstyle_xml)
@@ -443,7 +443,7 @@ module Java
           if test_files.empty?
             puts "No files to audit"
           else
-            test_files_string = ::CommandLine::join(' ', test_files);
+            test_files_string = CommandLine::join(' ', test_files);
             test_files_arg = if test_files_string.length > 5000
                                test_files_input_file = File.join(
                                  @build_path,
@@ -455,7 +455,7 @@ module Java
                              else
                                test_files_string
                              end
-            Java::CommandLine::java(
+            CommandLine::java(
                  [ @test_classpath, runner_build ],
                  'com.freerangedata.checkstyle.CheckstyleRunner',
                  @checkstyle_xml,
@@ -531,7 +531,7 @@ module Java
                            tests.split.join(',').split(',').compact
                          end
 
-            Java::CommandLine::test(@test_classpath,
+            CommandLine::test(@test_classpath,
                                     test_files.collect { |d|
               if File.exist?(d)
                 d = File.expand_path(d)
